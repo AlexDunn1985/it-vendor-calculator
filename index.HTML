@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IT Vendor Finance Calculator</title>
+  <style>
+    /* Configuration */
+    :root {
+      --annual-rate: 0.0925; /* 9.25% bank yield */
+      --commission-rate: 0.02; /* 2% commission */
+    }
+    /* Global styles */
+    body {
+      background: #fff;
+      color: #000;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    /* Widget container: black box with rounded corners */
+    #calculator {
+      background: #111;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    h3 {
+      margin-top: 0;
+      color: #fff;
+      text-align: center;
+    }
+    label {
+      color: #fff;
+      display: block;
+      margin-top: 12px;
+    }
+    input,
+    select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 6px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    #paymentDisplay,
+    #result {
+      margin-top: 15px;
+      font-weight: bold;
+      text-align: center;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div id="calculator">
+    <h3>IT Vendor Finance Calculator</h3>
+
+    <label for="funding">Funding Amount:</label>
+    <input type="text" id="funding" placeholder="e.g. 250,000.00">
+
+    <label for="term">Term (Years):</label>
+    <select id="term">
+      <option value="1">1 Year</option>
+      <option value="2">2 Years</option>
+      <option value="3">3 Years</option>
+      <option value="4">4 Years</option>
+      <option value="5">5 Years</option>
+    </select>
+
+    <label for="frequency">Repayment Frequency:</label>
+    <select id="frequency">
+      <option value="12">Monthly</option>
+      <option value="4">Quarterly</option>
+      <option value="1">Annually</option>
+    </select>
+
+    <label for="currency">Currency:</label>
+    <select id="currency">
+      <option value="GBP">GBP (£)</option>
+      <option value="EUR">EUR (€)</option>
+      <option value="USD">USD ($)</option>
+    </select>
+
+    <div id="paymentDisplay"></div>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    // Configuration object for easy updates
+    const CONFIG = {
+      annualRate: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--annual-rate')),
+      commissionRate: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--commission-rate')),
+      fx: {
+        GBP: 1,
+        EUR: 1.15,
+        USD: 1.25
+      }
+    };
+
+    // Utility to remove formatting
+    function unformat(value) {
+      return value.replace(/[^0-9\.]/g, '');
+    }
+
+    // Utility to format numbers with thousand separators and two decimals
+    function formatNumber(value) {
+      const num = parseFloat(value);
+      if (isNaN(num)) return '';
+      return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Utility to format as currency
+    function formatCurrency(value, symbol) {
+      return symbol + Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Main calculation function
+    function calculate() {
+      const rawFunding = document.getElementById('funding').value;
+      const funding = parseFloat(unformat(rawFunding));
+      const term = parseInt(document.getElementById('term').value);
+      const freq = parseInt(document.getElementById('frequency').value);
+      const curr = document.getElementById('currency').value;
+
+      if (isNaN(funding) || funding <= 0) {
+        document.getElementById('paymentDisplay').innerText = '';
+        document.getElementById('result').innerText = 'Enter a valid funding amount.';
+        return;
+      }
+
+      // Rates from CONFIG
+      const commission = funding * CONFIG.commissionRate;
+      const totalLoan = funding + commission;
+      const ratePerPeriod = CONFIG.annualRate / freq;
+      const totalPayments = term * freq;
+      const payment = (ratePerPeriod * totalLoan) / (1 - Math.pow(1 + ratePerPeriod, -totalPayments));
+      const totalRepayable = payment * totalPayments;
+
+      // Currency symbol and fx rate
+      const symbolMap = { GBP: '£', EUR: '€', USD: '$' };
+      const symbol = symbolMap[curr] || '';
+      const fxRate = CONFIG.fx[curr] || 1;
+
+      // Display results
+      const paymentVal = payment * fxRate;
+      const totalVal = totalRepayable * fxRate;
+      document.getElementById('paymentDisplay').innerHTML =
+        `Payment: <strong>${symbol}${formatCurrency(paymentVal, '')}</strong> per ${
+          freq === 12 ? 'month' : freq === 4 ? 'quarter' : 'year'
+        }`;
+      document.getElementById('result').innerHTML =
+        `Total Repayable: <strong>${symbol}${formatCurrency(totalVal, '')}</strong>`;
+    }
+
+    // Event listeners for dynamic updates
+    window.addEventListener('DOMContentLoaded', () => {
+      const fundingInput = document.getElementById('funding');
+      // Format on blur, unformat on focus
+      fundingInput.addEventListener('focus', () => {
+        fundingInput.value = unformat(fundingInput.value);
+      });
+      fundingInput.addEventListener('blur', () => {
+        fundingInput.value = formatNumber(fundingInput.value);
+        calculate();
+      });
+      // Calculate on input for select changes
+      ['term', 'frequency', 'currency'].forEach(id => {
+        document.getElementById(id).addEventListener('input', calculate);
+        document.getElementById(id).addEventListener('change', calculate);
+      });
+      calculate();
+    });
+  </script>
+</body>
+</html>
