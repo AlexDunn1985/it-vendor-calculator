@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Node (if you add build tools)
+node_modules/
+dist/
